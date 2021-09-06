@@ -1,0 +1,206 @@
+<html>
+  <head>
+    <script src="./blob.js"></script>
+    <script src="./layer.js"></script>
+    <script src="./star.js"></script>
+    <script src="./astronaut.js"></script>
+    <style>
+      #sliderContainer {
+        position: absolute;
+        top: 20px;
+        z-index: 50;
+      }
+      #sliderContainer span {
+        top: 50%;
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+        font-size: 25px;
+        font-family: Verdana, sans-serif;
+        color: black;
+        -webkit-text-stroke-width: 1px;
+        -webkit-text-stroke-color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sliderContainer"></div>
+  </body>
+</html>
+
+<script>
+  const PI = Math.PI;
+  const TWO_PI = Math.PI * 2;
+  const HALF_PI = Math.PI / 2;
+  const canvas = document.createElement("canvas");
+  const c = canvas.getContext("2d");
+
+  canvas.width = window.innerWidth - 20;
+  canvas.height = window.innerHeight - 20;
+  document.body.appendChild(canvas);
+
+  const debug = false;
+  const layerDebug = false;
+  const blobDebug = false;
+
+  function colorBlend(startColor, endColor, fraction) {
+    let diffR = endColor.r - startColor.r;
+    let diffG = endColor.g - startColor.g;
+    let diffB = endColor.b - startColor.b;
+    let newR = Math.floor(startColor.r + diffR * fraction);
+    let newG = Math.floor(startColor.g + diffG * fraction);
+    let newB = Math.floor(startColor.b + diffB * fraction);
+    return { r: newR, g: newG, b: newB };
+  }
+
+  let config = {
+    numberOfLayers: { min: 2, max: 20, value: 7, label: "Number Of Layers" },
+    numberOfSegments: {
+      min: 4,
+      max: 100,
+      value: 15,
+      label: "Number Of Segments",
+    },
+    moveSpeed: {
+      min: 0.001,
+      max: 0.2,
+      value: 0.01,
+      step: 0.001,
+      label: "Move Speed",
+    },
+    wobbleSpeed: {
+      min: 0.001,
+      max: 0.2,
+      value: 0.005,
+      step: 0.001,
+      label: "Wobble Speed",
+    },
+    space1: { space: true },
+    startColorR: { min: 0, max: 255, value: 33, label: "Start Color Red" },
+    startColorG: { min: 0, max: 255, value: 56, label: "Start Color Green" },
+    startColorB: { min: 0, max: 255, value: 102, label: "Start Color Blue" },
+    space2: { space: true },
+    endColorR: { min: 0, max: 255, value: 250, label: "End Color Red" },
+    endColorG: { min: 0, max: 255, value: 250, label: "End Color Green" },
+    endColorB: { min: 0, max: 255, value: 250, label: "End Color Blue" },
+  };
+
+  Object.entries(config).forEach(([key, value]) => {
+    if (value.space) {
+      document
+        .getElementById("sliderContainer")
+        .appendChild(document.createElement("br"));
+      return;
+    }
+    let span = document.createElement("span");
+    span.innerHTML = value.label + ": ";
+    span.width = "500px";
+    let slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = value.min;
+    slider.max = value.max;
+    slider.value = value.value;
+    slider.step = value.step || 1;
+    slider.class = "slider";
+    slider.oninput = function () {
+      config[key].value = Number(this.value);
+      this.parentNode.childNodes[1].data = this.value;
+      setup();
+    };
+    span.appendChild(document.createTextNode(value.value));
+    span.appendChild(slider);
+    document.getElementById("sliderContainer").appendChild(span);
+    document
+      .getElementById("sliderContainer")
+      .appendChild(document.createElement("br"));
+  });
+
+  let layers;
+  function setup() {
+    layers = [];
+    let startColor = {
+      r: config.startColorR.value,
+      g: config.startColorG.value,
+      b: config.startColorB.value,
+    };
+    let endColor = {
+      r: config.endColorR.value,
+      g: config.endColorG.value,
+      b: config.endColorB.value,
+    };
+
+    let startRadius = 50;
+    let stopRadius = Math.min(canvas.width, canvas.height) * 0.5;
+    let radiusStep = (stopRadius - startRadius) / config.numberOfLayers.value;
+
+    if (debug) {
+      layers = [
+        new Layer({
+          blobX: canvas.width / 2,
+          blobY: canvas.height / 2,
+          blobRadius: 300,
+          layerColor: "#aab9e3",
+          blobDebug,
+          layerDebug,
+        }),
+      ];
+    } else {
+      let newLayer, layerColor, layerRadius;
+      for (let i = 0; i < config.numberOfLayers.value; i++) {
+        layerColor = colorBlend(
+          startColor,
+          endColor,
+          i / (config.numberOfLayers.value - 1)
+        );
+        layerRadius = startRadius + i * radiusStep;
+        newLayer = new Layer({
+          blobX: canvas.width / 2,
+          blobY: canvas.height / 2,
+          blobRadius: layerRadius,
+          layerColor: `rgba(${layerColor.r},${layerColor.g},${layerColor.b},1)`,
+          moveAmount: 25,
+          moveSpeed: config.moveSpeed.value,
+          segments: config.numberOfSegments.value,
+          wobbleSpeed: config.wobbleSpeed.value,
+        });
+        layers.push(newLayer);
+        layers.push(
+          new Star({
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            ctx: c,
+            color: `rgba(${layerColor.r},${layerColor.g},${layerColor.b},1)`,
+            numberOfPoints: Math.ceil(Math.random() * 6 + 2),
+          })
+        );
+        if (i == Math.floor(config.numberOfLayers.value / 4)) {
+          layers.push(
+            new Astronaut({
+              x: canvas.width / 2,
+              y: canvas.height / 2,
+              width: layerRadius * 1.5,
+              ctx: c,
+            })
+          );
+        }
+      }
+    }
+  }
+
+  function loop() {
+    c.save();
+    c.clearRect(0, 0, canvas.width, canvas.height);
+    c.fillStyle = `rgba(${config.startColorR.value},${config.startColorG.value},${config.startColorB.value},1)`;
+    c.fillRect(0, 0, canvas.width, canvas.height);
+    c.restore();
+
+    layers.forEach((layer) => {
+      layer.update();
+      layer.draw();
+    });
+
+    window.requestAnimationFrame(loop);
+  }
+
+  setup();
+  loop();
+</script>

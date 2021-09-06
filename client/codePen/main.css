@@ -1,0 +1,15 @@
+#sliderContainer {
+  position: absolute;
+  top: 20px;
+  z-index: 50;
+}
+#sliderContainer span {
+  top: 50%;
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
+  font-size: 25px;
+  font-family: Verdana, sans-serif;
+  color: black;
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: white;
+}
